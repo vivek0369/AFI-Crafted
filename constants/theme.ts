@@ -1,53 +1,33 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
-import { Platform } from 'react-native';
-
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-
-export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-  },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
-  },
+export const C = {
+  bg: '#f0f2f5',
+  card: '#ffffff',
+  border: '#e0e0e5',
+  borderLight: '#ebebef',
+  // Green theme from images
+  green: '#2e7d32',
+  greenDark: '#1b5e20',
+  greenLight: '#e8f5e9',
+  // Accent
+  accent: '#2e7d32',
+  accentText: '#2e7d32',
+  accentBorder: '#2e7d32',
+  accentBtn: '#2e7d32',
+  // Backup button colors
+  btnGreen: '#2e7d32',
+  btnDark: '#37474f',
+  btnBlue: '#3f51b5',
+  btnOrange: '#f4511e',
+  btnTeal: '#4db6ac',
+  // Text
+  text: '#1c1c1e',
+  textSub: '#48484a',
+  textMuted: '#8e8e93',
+  white: '#ffffff',
+  danger: '#ff3b30',
+  headerBg: '#2e7d32',
+  headerText: '#ffffff',
+  tabBg: '#ffffff',
+  inputBg: '#f9f9f9',
+  sectionHeader: '#e8f0fe',
+  unitRowActive: '#e8f5e9',
 };
-
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
