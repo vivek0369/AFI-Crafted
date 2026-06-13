@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
 // Get the local IP address for development
-// Replace this with your actual Render/Heroku URL after deployment
-const PRODUCTION_URL = 'https://your-app-name.onrender.com/api';
+// Replace this with your actual Render URL after deployment
+const PRODUCTION_URL = 'https://afi-crafted.onrender.com/api';
 
 const getBaseUrl = () => {
   if (__DEV__) {
