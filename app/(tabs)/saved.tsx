@@ -3,21 +3,20 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, Alert, TextInput, StatusBar,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTheme } from '../../constants/ThemeContext';
 import { getColors } from '../../constants/colors';
 import { SavedReport, getReports, deleteReport } from '../../constants/storage';
 import { generateLocalPDF } from '../../constants/pdfGenerator';
-import { api } from '../../constants/api';
 
 export default function SavedScreen() {
   const [reports, setReports] = useState<SavedReport[]>([]);
   const [search, setSearch] = useState('');
   const [showAll, setShowAll] = useState(false);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { isDark } = useTheme();
   const C = getColors(isDark);
@@ -28,56 +27,76 @@ export default function SavedScreen() {
   async function handleDelete(id: string) {
     Alert.alert('Delete', 'Delete this report?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => { await deleteReport(id); load(); } },
+      {
+        text: 'Delete', style: 'destructive', onPress: async () => {
+          // Update UI immediately so report disappears right away
+          setReports(prev => prev.filter(r => r.id !== id));
+          try {
+            await deleteReport(id);
+          } catch (e: any) {
+            Alert.alert('Error', 'Failed to delete report: ' + e.message);
+            load(); // Reload to restore correct state on failure
+          }
+        }
+      },
     ]);
   }
 
   async function handleShare(r: SavedReport) {
-    const lines = [
-      `*AFI - Crafted Report*`,
-      `Title: ${r.title}`, 
-      `Client: ${r.client}`,
-      `Date: ${new Date(r.date).toLocaleDateString()}`, 
-      `Unit: ${r.unit}`, 
-      `--------------------------`,
-      ...r.entries.map((e, i) => {
-        let entryText = `${i + 1}. ${e.name}: ${e.length}m x ${e.girth || e.width}cm`;
-        if (e.allowance && e.allowance > 0) entryText += ` (A:${e.allowance})`;
-        entryText += ` = ${e.volume.toFixed(3)} ${r.unit}`;
-        return entryText;
-      }),
-      `--------------------------`,
-      `Total Volume: ${r.totalVolume.toFixed(3)} ${r.unit}`,
-      `Subtotal: $${r.totalValue.toFixed(2)}`,
-    ];
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Not Available', 'Sharing is not available on this device.');
+        return;
+      }
 
-    if (r.discount && r.discount > 0) {
-      lines.push(`Discount: ${r.discount}% (-$${(r.totalValue * r.discount / 100).toFixed(2)})`);
+      const lines = [
+        `*AFI - Crafted Report*`,
+        `Title: ${r.title}`,
+        `Client: ${r.client}`,
+        `Date: ${new Date(r.date).toLocaleDateString()}`,
+        `Unit: ${r.unit}`,
+        `--------------------------`,
+        ...r.entries.map((e, i) => {
+          let entryText = `${i + 1}. ${e.name}: ${e.length}m x ${e.girth || e.width}cm`;
+          if (e.allowance && e.allowance > 0) entryText += ` (A:${e.allowance})`;
+          entryText += ` = ${(e.volume ?? 0).toFixed(3)} ${r.unit}`;
+          return entryText;
+        }),
+        `--------------------------`,
+        `Total Volume: ${(r.totalVolume || 0).toFixed(3)} ${r.unit}`,
+        `Subtotal: $${(r.totalValue || 0).toFixed(2)}`,
+      ];
+
+      if (r.discount && r.discount > 0) {
+        lines.push(`Discount: ${r.discount}% (-$${(r.totalValue * r.discount / 100).toFixed(2)})`);
+      }
+      if (r.tax && r.tax > 0) {
+        lines.push(`Tax: ${r.tax}% (+$${(r.totalValue * r.tax / 100).toFixed(2)})`);
+      }
+
+      const finalTotal = r.totalValue * (1 - (r.discount || 0) / 100) * (1 + (r.tax || 0) / 100);
+      lines.push(`*Grand Total: $${finalTotal.toFixed(2)}*`);
+
+      const path = FileSystem.cacheDirectory + `report_${r.id}.txt`;
+      await FileSystem.writeAsStringAsync(path, lines.join('\n'));
+      await Sharing.shareAsync(path, { mimeType: 'text/plain', dialogTitle: r.title });
+    } catch (e: any) {
+      Alert.alert('Error', 'Failed to share report: ' + e.message);
     }
-    if (r.tax && r.tax > 0) {
-      lines.push(`Tax: ${r.tax}% (+$${(r.totalValue * r.tax / 100).toFixed(2)})`);
-    }
-
-    const finalTotal = r.totalValue * (1 - (r.discount || 0) / 100) * (1 + (r.tax || 0) / 100);
-    lines.push(`*Grand Total: $${finalTotal.toFixed(2)}*`);
-
-    const path = FileSystem.cacheDirectory + `report_${r.id}.txt`;
-    await FileSystem.writeAsStringAsync(path, lines.join('\n'));
-    await Sharing.shareAsync(path, { mimeType: 'text/plain', dialogTitle: r.title });
   }
 
   async function handlePDFShare(r: SavedReport) {
+    if (loading) return;
     setLoading(true);
     try {
       await generateLocalPDF(r);
-      setLoading(false);
     } catch (e: any) {
       Alert.alert('Error', 'Failed to generate PDF: ' + e.message);
+    } finally {
       setLoading(false);
     }
   }
-
-  const [loading, setLoading] = useState(false);
 
   const filtered = reports.filter(r =>
     (r.title || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -87,8 +106,6 @@ export default function SavedScreen() {
   const visible = showAll ? filtered : filtered.slice(0, 4);
 
   const s = makeStyles(C);
-
-  const insets = useSafeAreaInsets();
 
   return (
     <View style={s.safe}>
@@ -134,7 +151,7 @@ export default function SavedScreen() {
                 <Text style={s.cardTitle} numberOfLines={1}>{r.title}</Text>
                 <View style={[s.badge, r.status === 'Draft' ? s.badgePending : s.badgeValue]}>
                   <Text style={[s.badgeText, r.status !== 'Draft' && { color: C.accentText }]}>
-                    {r.status === 'Draft' ? 'Pending' : `$${r.totalValue.toFixed(2)}`}
+                    {r.status === 'Draft' ? 'Pending' : `$${(r.totalValue || 0).toFixed(2)}`}
                   </Text>
                 </View>
               </View>
@@ -144,19 +161,32 @@ export default function SavedScreen() {
               </Text>
               <Text style={s.cardVol}>
                 {'TOTAL VOL.  '}
-                <Text style={s.cardVolNum}>{r.totalVolume.toFixed(3)}</Text>
+                <Text style={s.cardVolNum}>{(r.totalVolume || 0).toFixed(3)}</Text>
                 {'  '}{r.unit}
               </Text>
             </View>
             <View style={s.actions}>
-              <TouchableOpacity onPress={() => handlePDFShare(r)} style={s.actionBtn} disabled={loading}>
-                <Ionicons name="document-outline" size={19} color={C.accentText} />
+              <TouchableOpacity
+                onPress={() => handlePDFShare(r)}
+                style={s.actionBtn}
+                disabled={loading}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="document-outline" size={20} color={loading ? C.textMuted : C.accentText} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleShare(r)} style={s.actionBtn}>
-                <Ionicons name="share-social-outline" size={19} color={C.textMuted} />
+              <TouchableOpacity
+                onPress={() => handleShare(r)}
+                style={s.actionBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="share-social-outline" size={20} color={C.textMuted} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDelete(r.id)} style={s.actionBtn}>
-                <Ionicons name="trash-outline" size={19} color={C.danger} />
+              <TouchableOpacity
+                onPress={() => handleDelete(r.id)}
+                style={s.actionBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="trash-outline" size={20} color={C.danger} />
               </TouchableOpacity>
             </View>
           </View>

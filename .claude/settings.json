@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs ls -la)",
+      "Bash(node -e \"const fs = require\\('/home/chandan/temp/AFI-Crafted/node_modules/expo-file-system/build/FileSystem'\\); console.log\\(Object.getOwnPropertyNames\\(fs.File?.prototype || {}\\)\\)\")",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

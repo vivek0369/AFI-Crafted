@@ -13,7 +13,7 @@ export async function generateLocalPDF(report: SavedReport) {
     }
 
     // Calculate details
-    const baseTotal = report.entries.reduce((sum, e) => sum + e.value, 0);
+    const baseTotal = report.entries.reduce((sum, e) => sum + (e.value || 0), 0);
     const taxAmt = (baseTotal * (report.tax || 0)) / 100;
     const discountAmt = report.discount || 0;
 
@@ -91,9 +91,9 @@ export async function generateLocalPDF(report: SavedReport) {
                 <td class="text-left">${e.name}</td>
                 <td>${e.length} x ${e.girth || e.width}${e.thickness ? ' x ' + e.thickness : ''}</td>
                 <td>${e.nos || 1}</td>
-                <td>${e.volume.toFixed(3)}</td>
+                <td>${(e.volume ?? 0).toFixed(3)}</td>
                 <td>${e.rate || '-'}</td>
-                <td>${e.value.toFixed(2)}</td>
+                <td>${(e.value ?? 0).toFixed(2)}</td>
               </tr>
             `).join('')}
           </tbody>
